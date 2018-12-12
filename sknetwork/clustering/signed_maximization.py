@@ -128,6 +128,8 @@ class GreedyModularity:
         labels: np.ndarray = np.arange(graph.n_nodes)
         pos_clusters_proba: np.ndarray = graph.pos_node_weights.copy()
         pos_self_loops: np.ndarray = graph.pos_norm_adj.diagonal()
+        neg_clusters_proba: np.ndarray = graph.neg_node_weights.copy()
+        neg_self_loops: np.ndarray = graph.neg_norm_adj.diagonal()
 
         while increase:
             increase = False
@@ -151,35 +153,70 @@ class GreedyModularity:
                 pos_unique_clusters: list = list(set(pos_neighbors_clusters.tolist()) - {node_cluster})
                 pos_n_clusters: int = len(pos_unique_clusters)
 
+                # negative modularity
+
+                neg_neighbor_weights: np.ndarray = graph.neg_norm_adj.data[
+                                                   graph.neg_norm_adj.indptr[node]:graph.neg_norm_adj.indptr[node + 1]]
+                neg_neighbors: np.ndarray = graph.neg_norm_adj.indices[
+                                            graph.neg_norm_adj.indptr[node]:graph.neg_norm_adj.indptr[node + 1]]
+                neg_neighbors_clusters: np.ndarray = labels[neg_neighbors]
+                neg_unique_clusters: list = list(set(neg_neighbors_clusters.tolist()) - {node_cluster})
+                neg_n_clusters: int = len(neg_unique_clusters)
+
+                unique_clusters = neg_unique_clusters + pos_unique_clusters
+                n_clusters: int = len(unique_clusters)
+
+                pos_out_delta: float = 0
+                pos_node_proba: float = 0
+                pos_node_ratio: float = 0
+
                 if pos_n_clusters > 0:
-                    pos_node_proba: float = graph.pos_node_weights[node]
-                    pos_node_ratio: float = self.resolution * pos_node_proba
+                    pos_node_proba = graph.pos_node_weights[node]
+                    pos_node_ratio = self.resolution * pos_node_proba
 
                     # node_weights of connections to all other nodes in original cluster
-                    out_delta: float = (pos_self_loops[node] - pos_neighbor_weights.dot(pos_neighbors_clusters == node_cluster))
+                    pos_out_delta = (pos_self_loops[node] - pos_neighbor_weights.dot(pos_neighbors_clusters == node_cluster))
                     # proba to choose (node, other_neighbor) among original cluster
-                    out_delta += pos_node_ratio * (pos_clusters_proba[node_cluster] - pos_node_proba)
+                    pos_out_delta += pos_node_ratio * (pos_clusters_proba[node_cluster] - pos_node_proba)
 
-                    local_delta: np.ndarray = np.full(pos_n_clusters, out_delta)
+                neg_out_delta: float = 0
+                neg_node_proba: float = 0
+                neg_node_ratio: float = 0
 
-                    for index_cluster, cluster in enumerate(pos_unique_clusters):
+                if neg_n_clusters > 0:
+                    neg_node_proba = graph.neg_node_weights[node]
+                    neg_node_ratio = self.resolution * neg_node_proba
+
+                    # node_weights of connections to all other nodes in original cluster
+                    neg_out_delta = (neg_self_loops[node] - neg_neighbor_weights.dot(neg_neighbors_clusters == node_cluster))
+                    # proba to choose (node, other_neighbor) among original cluster
+                    neg_out_delta += neg_node_ratio * (neg_clusters_proba[node_cluster] - neg_node_proba)
+
+                if n_clusters > 0:
+
+                    local_delta: np.ndarray = np.full(n_clusters, pos_out_delta - neg_out_delta)
+
+                    for index_cluster, cluster in enumerate(unique_clusters):
                         # node_weights of connections to all other nodes in candidate cluster
-                        in_delta: float = pos_neighbor_weights.dot(pos_neighbors_clusters == cluster)
+                        pos_in_delta: float = pos_neighbor_weights.dot(pos_neighbors_clusters == cluster)
                         # proba to choose (node, other_neighbor) among new cluster
-                        in_delta -= pos_node_ratio * pos_clusters_proba[cluster]
+                        pos_in_delta -= pos_node_ratio * pos_clusters_proba[cluster]
 
-                        local_delta[index_cluster] += in_delta
+                        neg_in_delta: float = neg_neighbor_weights.dot(neg_neighbors_clusters == cluster)
+                        # proba to choose (node, other_neighbor) among new cluster
+                        neg_in_delta -= neg_node_ratio * neg_clusters_proba[cluster]
 
-                    # negative modularity
-                    # TODO// Negative modularity
+                        local_delta[index_cluster] += pos_in_delta - neg_in_delta
 
                     best_delta: float = 2 * max(local_delta)
                     if best_delta > 0:
                         pass_increase += best_delta
-                        best_cluster = pos_unique_clusters[local_delta.argmax()]
+                        best_cluster = unique_clusters[local_delta.argmax()]
 
                         pos_clusters_proba[node_cluster] -= pos_node_proba
                         pos_clusters_proba[best_cluster] += pos_node_proba
+                        neg_clusters_proba[node_cluster] -= neg_node_proba
+                        neg_clusters_proba[best_cluster] += neg_node_proba
                         labels[node] = best_cluster
 
             total_increase += pass_increase
@@ -200,8 +237,6 @@ def fit_core(shuffle_nodes, n_nodes, node_weights, resolution, self_loops, tol, 
     ----------
     shuffle_nodes: if True, a random permutation of the node is done. The natural order is used otherwise
     n_nodes: number of nodes in the graph
-    edge_weights: the edge weights in the graph
-    adjacency: the adjacency matrix without weights
     node_weights: the node weights in the graph
     resolution: the resolution for the Louvain modularity
     self_loops: the weights of the self loops for each node
