@@ -1,3 +1,8 @@
+.. image:: https://perso.telecom-paristech.fr/bonald/logo_sknetwork.png
+    :align: right
+    :width: 100px
+    :alt: logo sknetwork
+
 ==============
 scikit-network
 ==============
@@ -25,15 +30,16 @@ Graph algorithms
 * Documentation: https://scikit-network.readthedocs.io.
 
 
-Features
---------
+Quickstart
+----------
 
-* TODO
+Install scikit-network:
 
-Credits
--------
+.. code-block:: console
 
-This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
+    $ pip install scikit-network
 
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
+To use scikit-network in a project::
+
+    import sknetwork as skn
+

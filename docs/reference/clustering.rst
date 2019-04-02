@@ -7,18 +7,33 @@ Clustering
 
 Louvain
 -------
-.. automodule:: sknetwork.clustering.louvain
-   :toctree: generated/
+.. automodule:: sknetwork.clustering
 
-.. autoclass:: Louvain
+.. autoclass:: sknetwork.clustering.Louvain
     :members:
 
-.. autoclass:: GreedyModularity
+.. autoclass:: sknetwork.clustering.GreedyModularity
     :members:
 
-.. autoclass:: GreedyModularityJiT
+
+Louvain for bipartite graphs
+----------------------------
+
+.. autoclass:: sknetwork.clustering.BiLouvain
     :members:
+
+.. autoclass:: sknetwork.clustering.GreedyBipartite
+    :members:
+
 
 Metrics
 -------
+.. autofunction:: sknetwork.clustering.modularity
 
+.. autofunction:: sknetwork.clustering.bimodularity
+
+.. autofunction:: sknetwork.clustering.cocitation_modularity
+
+.. autofunction:: sknetwork.clustering.performance
+
+.. autofunction:: sknetwork.clustering.cocitation_performance
